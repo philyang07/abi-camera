@@ -15,13 +15,13 @@ labelMap = ["background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus
             "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 
 nnPathDefault = str((Path(__file__).parent / Path('../models/mobilenet-ssd_openvino_2021.4_5shave.blob')).resolve().absolute())
-parser = argparse.ArgumentParser()
-parser.add_argument('nnPath', nargs='?', help="Path to mobilenet detection network blob", default=nnPathDefault)
-parser.add_argument('-ff', '--full_frame', action="store_true", help="Perform tracking on full RGB frame", default=False)
+# parser = argparse.ArgumentParser()
+# parser.add_argument('nnPath', nargs='?', help="Path to mobilenet detection network blob", default=nnPathDefault)
+# parser.add_argument('-ff', '--full_frame', action="store_true", help="Perform tracking on full RGB frame", default=False)
 
-args = parser.parse_args()
+# args = parser.parse_args()
 
-fullFrameTracking = args.full_frame
+fullFrameTracking = False
 
 class CameraInterface:
     def __init__(self):
@@ -65,7 +65,7 @@ class CameraInterface:
         stereo.setDepthAlign(dai.CameraBoardSocket.RGB)
         stereo.setOutputSize(monoLeft.getResolutionWidth(), monoLeft.getResolutionHeight())
 
-        spatialDetectionNetwork.setBlobPath(args.nnPath)
+        spatialDetectionNetwork.setBlobPath(nnPathDefault)
         spatialDetectionNetwork.setConfidenceThreshold(0.5)
         spatialDetectionNetwork.input.setBlocking(False)
         spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)

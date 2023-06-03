@@ -1,0 +1,8 @@
+<launch>
+    <arg name="mode" default="default"/>
+    <param name="mode" value="$(arg mode)"/>
+    <node pkg="motor-control" type="motor_turn_node.py" name="motor_node" output="screen"/>
+    <group if="$(eval mode != 'window')">
+        <node pkg="abi-camera" type="object_tracker.py" name="camera_node"/>
+    </group>
+</launch>
