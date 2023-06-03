@@ -1,6 +1,9 @@
 <launch>
     <arg name="mode" default="default"/>
+    <arg name="wave_interval" default="600"/>
+
     <param name="mode" value="$(arg mode)"/>
+    <param name="wave_interval" value="$(arg wave_interval)" type="int"/>
     <node pkg="motor-control" type="motor_turn_node.py" name="motor_node" output="screen"/>
     <group if="$(eval mode != 'window')">
         <node pkg="abi-camera" type="object_tracker.py" name="camera_node"/>
