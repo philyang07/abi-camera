@@ -6,6 +6,7 @@ import depthai as dai
 import numpy as np
 import time
 import argparse
+from datetime import datetime
 
 import rospy
 from std_msgs.msg import String, Float32
@@ -23,6 +24,10 @@ nnPathDefault = str((Path(__file__).parent / Path('../models/mobilenet-ssd_openv
 
 fullFrameTracking = False
 
+# Constants for start and end hour
+START_HOUR = 7 # 8pm
+END_HOUR = 19 # 7pm
+
 class CameraInterface:
     def __init__(self):
         # Coordinates publisher node
@@ -30,6 +35,8 @@ class CameraInterface:
         self.pub_location = rospy.Publisher('camera/person_location', Vector3, queue_size=10)
         # self.pub_angle = rospy.Publisher('camera/person_angle', Float32, queue_size=10)
 
+        # Is running or not
+        self.running = False
 
         # Create pipeline
         self.pipeline = dai.Pipeline()
@@ -99,7 +106,16 @@ class CameraInterface:
         spatialDetectionNetwork.out.link(objectTracker.inputDetections)
         stereo.depth.link(spatialDetectionNetwork.inputDepth)
 
+    # Returns true if time is 7am to 7pm
+    def time_enabled(self):
+        now = datetime.now()
+        todayStart = now.replace(hour=START_HOUR, minute=0, second=0, microsecond=0)
+        todayEnd = now.replace(hour=END_HOUR, minute=0, second=0, microsecond=0)
+        return now >= todayStart and now <= todayEnd
+
     def run(self):
+        self.running = True
+
         # Connect to device and start pipeline
         with dai.Device(self.pipeline) as device:
 
@@ -112,7 +128,7 @@ class CameraInterface:
             color = (255, 255, 255)
 
             rate = rospy.Rate(3)
-            while not rospy.is_shutdown():
+            while self.time_enabled():
                 imgFrame = preview.get()
                 track = tracklets.get()
 
@@ -168,6 +184,7 @@ class CameraInterface:
                 # cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
 
                 # cv2.imshow("tracker", frame)
+            self.running = False
 
 def lerp(var, in_start, in_end, out_start, out_end):
     slope = (out_end - out_start)/(in_end - in_start)
@@ -176,6 +193,10 @@ def lerp(var, in_start, in_end, out_start, out_end):
 if __name__ == '__main__':
    camera_interface = CameraInterface()
    try:
-       camera_interface.run()
+       rate = rospy.Rate(2)
+       while not rospy.is_shutdown():
+           if camera_interface.time_enabled() and not camera_interface.running: 
+               camera_interface.run()
+           rate.sleep()
    except rospy.ROSInterruptException:
     pass
