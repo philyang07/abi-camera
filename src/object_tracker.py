@@ -25,7 +25,7 @@ nnPathDefault = str((Path(__file__).parent / Path('../models/mobilenet-ssd_openv
 fullFrameTracking = False
 
 # Constants for start and end hour
-START_HOUR = 7 # 8pm
+START_HOUR = 7 # 7am
 END_HOUR = 19 # 7pm
 
 class CameraInterface:
@@ -34,6 +34,8 @@ class CameraInterface:
         rospy.init_node('camera_interface', anonymous=False)
         self.pub_location = rospy.Publisher('camera/person_location', Vector3, queue_size=10)
         # self.pub_angle = rospy.Publisher('camera/person_angle', Float32, queue_size=10)
+
+        self.vec_history = [] # Store last 5 values
 
         # Is running or not
         self.running = False
@@ -163,9 +165,8 @@ class CameraInterface:
 
                     # cv2.putText(frame, f"X: {int(t.spatialCoordinates.x)} mm", (x1 + 10, y1 + 65), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
                     # cv2.putText(frame, f"Y: {int(t.spatialCoordinates.y)} mm", (x1 + 10, y1 + 80), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
-                    # cv2.putText(frame, f"Z: {int(t.spatialCoordik
+                    # cv2.putText(frame, f"Z: {int(t.spatialCoordinates.z)} mm", (x1 + 10, y1 + 95), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
                     vec = Vector3()
-                    # vec.x = int(t.spatialCoordinates.x)
                     vec.x =  int(t.spatialCoordinates.x)
                     vec.y = int(t.spatialCoordinates.y)
                     vec.z = int(t.spatialCoordinates.z)
@@ -177,10 +178,29 @@ class CameraInterface:
                     if (closest_vec == None or vec.x ** 2 + vec.y ** 2 < closest_vec.x ** 2 + closest_vec.y ** 2):
                         closest_vec = vec
 
-                    rate.sleep()
-                if (closest_vec != None):
-                    self.pub_location.publish(closest_vec)
+                # If invalid vec or no vec then append a z=1500
+                if closest_vec == None:
+                    closest_vec = Vector3(x=0, y=0, z=0)
+                if closest_vec.z <= 0:
+                    closest_vec.z = 1500
+                self.vec_history.append(closest_vec)
+                while len(self.vec_history) > 5:
+                    self.vec_history.pop(0)
+                # Get mean vector
+                x_sum = 0
+                y_sum = 0
+                z_sum = 0
+                for vec in self.vec_history:
+                    x_sum += vec.x
+                    y_sum += vec.y
+                    z_sum += vec.z
+                return_vec = Vector3()
+                return_vec.x = x_sum/len(self.vec_history)
+                return_vec.y = y_sum/len(self.vec_history)
+                return_vec.z = z_sum/len(self.vec_history)
 
+                self.pub_location.publish(return_vec)
+                rate.sleep()
                 # cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
 
                 # cv2.imshow("tracker", frame)
